@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
 
-public class Client implements Runnable {
+public class Client extends Thread {
 
     private String host;
 
@@ -18,17 +18,18 @@ public class Client implements Runnable {
 
     private Selector selector;
 
-    private SocketChannel socketChannel;
+    private SocketChannel client;
 
     private volatile boolean stop;
 
-    public Client(String host, int port) {
+    public Client(String host, int port, String name) {
+        super(name);
         try {
             this.host = host;
             this.port = port;
             selector = Selector.open();
-            socketChannel = SocketChannel.open();
-            socketChannel.configureBlocking(false);
+            client = SocketChannel.open();
+            client.configureBlocking(false);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -64,39 +65,41 @@ public class Client implements Runnable {
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         }
         if (selector != null) {
             try {
                 selector.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         }
     }
 
     private void doConnect() throws IOException {
-        if (socketChannel.connect(new InetSocketAddress(host, port))) {
-            socketChannel.register(selector, SelectionKey.OP_READ);
-            doWrite(socketChannel);
+        if (client.connect(new InetSocketAddress(host, port))) {
+            // 连接成功 注册读事件
+            client.register(selector, SelectionKey.OP_READ);
+            doWrite(client);
         } else {
-            socketChannel.register(selector, SelectionKey.OP_CONNECT);
+            // 向 Selector 注册连接事件, 监听服务端的 ACK 应答
+            client.register(selector, SelectionKey.OP_CONNECT);
         }
     }
 
     private void handleInput(SelectionKey key) throws IOException {
         if (key.isValid()) {
             SocketChannel socketChannel = (SocketChannel) key.channel();
-            if (key.isConnectable()) {
-                if (socketChannel.finishConnect()) {
-                    socketChannel.register(selector, SelectionKey.OP_READ);
-                    doWrite(socketChannel);
+            if (key.isConnectable()) { // 处理连接事件
+                if (socketChannel.finishConnect()) { // 连接成功
+                    socketChannel.register(selector, SelectionKey.OP_READ); // 继续注册读事件
+                    doWrite(socketChannel); // 发送消息
                 } else {
-                    System.exit(1);
+                    System.exit(1); // 连接失败, 退出
                 }
             }
-            if (key.isReadable()) {
+            if (key.isReadable()) { // 有新的消息
                 ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
                 int readBytes = socketChannel.read(byteBuffer);
                 if (readBytes > 0) {
@@ -109,8 +112,6 @@ public class Client implements Runnable {
                 } else if (readBytes < 0) {
                     key.cancel();
                     socketChannel.close();
-                } else {
-
                 }
             }
         }
@@ -128,6 +129,6 @@ public class Client implements Runnable {
     }
 
     public static void main(String[] args) {
-        new Thread(new Client("127.0.0.1", 8080), "client").start();
+        new Client("127.0.0.1", 8080, "client").start();
     }
 }
