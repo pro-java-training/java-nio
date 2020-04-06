@@ -10,7 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
 
-public class TimeClientHandler implements Runnable {
+public class Client implements Runnable {
 
     private String host;
 
@@ -22,7 +22,7 @@ public class TimeClientHandler implements Runnable {
 
     private volatile boolean stop;
 
-    public TimeClientHandler(String host, int port) {
+    public Client(String host, int port) {
         try {
             this.host = host;
             this.port = port;
@@ -125,5 +125,9 @@ public class TimeClientHandler implements Runnable {
         if (!byteBuffer.hasRemaining()) {
             System.out.println("send request succeed.");
         }
+    }
+
+    public static void main(String[] args) {
+        new Thread(new Client("127.0.0.1", 8080), "client").start();
     }
 }
