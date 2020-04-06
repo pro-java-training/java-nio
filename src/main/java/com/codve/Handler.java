@@ -1,15 +1,21 @@
 package com.codve;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class ServerHandler implements Runnable {
+public class Handler extends Thread {
+
+    public static final ThreadLocal<DateTimeFormatter> formatter =
+            ThreadLocal.withInitial(() -> DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
     private Socket socket;
 
-    public ServerHandler(Socket socket) {
+    public Handler(Socket socket) {
         this.socket = socket;
     }
 
@@ -23,8 +29,7 @@ public class ServerHandler implements Runnable {
                     break;
                 }
                 System.out.println("received request: " + body);
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-                writer.println(LocalDateTime.now().format(formatter));
+                writer.println(LocalDateTime.now().format(formatter.get()));
             }
         } catch (IOException e) {
             e.printStackTrace();
