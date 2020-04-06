@@ -15,7 +15,7 @@ public class Server {
                     new ArrayBlockingQueue<>(64));;
             while (true) {
                 Socket client = server.accept();
-                executor.execute(new com.codve.block.Server(client));
+                executor.execute(new Task(client));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);

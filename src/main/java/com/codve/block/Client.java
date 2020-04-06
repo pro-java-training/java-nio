@@ -18,7 +18,7 @@ public class Client {
                 System.out.println("response is: " + response);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }

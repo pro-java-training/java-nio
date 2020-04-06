@@ -1,4 +1,4 @@
-package com.codve.block;
+package com.codve.pool;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,14 +9,14 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class Server extends Thread {
+public class Task implements Runnable {
 
     public static final ThreadLocal<DateTimeFormatter> formatter =
             ThreadLocal.withInitial(() -> DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
     private Socket socket;
 
-    public Server(Socket socket) {
+    public Task(Socket socket) {
         this.socket = socket;
     }
 
@@ -29,16 +29,6 @@ public class Server extends Thread {
             writer.println(LocalDateTime.now().format(formatter.get()));
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static void main(String[] args) throws IOException {
-        int port = 8080;
-        try (ServerSocket server = new ServerSocket(port)) {
-            while (true) {
-                Socket client = server.accept();
-                new Server(client).start();
-            }
         }
     }
 }
