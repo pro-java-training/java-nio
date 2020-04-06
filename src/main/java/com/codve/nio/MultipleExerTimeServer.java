@@ -17,17 +17,18 @@ public class MultipleExerTimeServer implements Runnable {
 
     private Selector selector;
 
-    private ServerSocketChannel serverSocketChannel;
+    private ServerSocketChannel server; // 用于监听所有客户端的连接
 
     private volatile boolean stop;
 
     public MultipleExerTimeServer(int port) {
         try {
+            server = ServerSocketChannel.open();
+            server.configureBlocking(false); // 设置非阻塞模式
+            server.socket().bind(new InetSocketAddress(port), 1024);
             selector = Selector.open();
-            serverSocketChannel = ServerSocketChannel.open();
-            serverSocketChannel.configureBlocking(false);
-            serverSocketChannel.socket().bind(new InetSocketAddress(port), 1024);
-            serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+            // 把 server 注册到 Selector 上, 监听 ACCEPT 事件.
+            server.register(selector, SelectionKey.OP_ACCEPT);
             System.out.println("server is started in: " + port);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -76,28 +77,29 @@ public class MultipleExerTimeServer implements Runnable {
 
     private void handleInput(SelectionKey key) throws IOException {
         if (key.isValid()) {
-            if (key.isAcceptable()) {
-                ServerSocketChannel serverSocketChannel = (ServerSocketChannel) key.channel();
-                SocketChannel socketChannel = serverSocketChannel.accept();
-                socketChannel.configureBlocking(false);
-                socketChannel.register(selector, SelectionKey.OP_READ);
+            if (key.isAcceptable()) { // 有新的客户端接入
+                ServerSocketChannel server = (ServerSocketChannel) key.channel();
+                SocketChannel client = server.accept(); // 完成 TCP 3 次握手, 建立物理链路
+                client.configureBlocking(false); // 设置客户端为非阻塞模式
+                // 把客户端注册到多路复用器上, 监听读操作, 读取客户端发送的消息
+                client.register(selector, SelectionKey.OP_READ);
             }
-            if (key.isReadable()) {
-                SocketChannel socketChannel = (SocketChannel) key.channel();
-                ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-                int readBytes = socketChannel.read(byteBuffer);
-                if (readBytes > 0) {
-                    byteBuffer.flip();
-                    byte[] bytes = new byte[byteBuffer.remaining()];
-                    byteBuffer.get(bytes);
+            if (key.isReadable()) {  // 有新的消息
+                SocketChannel client = (SocketChannel) key.channel();
+                ByteBuffer readBuffer = ByteBuffer.allocate(1024);
+                int length = client.read(readBuffer); // 读取消息
+                if (length > 0) {
+                    readBuffer.flip();
+                    byte[] bytes = new byte[readBuffer.remaining()];
+                    readBuffer.get(bytes);
                     String body = new String(bytes, StandardCharsets.UTF_8);
                     System.out.println("received request: " + body);
                     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
                     String response = LocalDateTime.now().format(formatter);
-                    doWrite(socketChannel, response);
-                } else if (readBytes < 0) {
+                    doWrite(client, response);
+                } else if (length < 0) {
                     key.cancel();
-                    socketChannel.close();
+                    client.close();
                 } else {
 
                 }
@@ -105,13 +107,13 @@ public class MultipleExerTimeServer implements Runnable {
         }
     }
 
-    private void doWrite(SocketChannel socketChannel, String response) throws IOException {
+    private void doWrite(SocketChannel client, String response) throws IOException {
         if (response != null && response.trim().length() > 0) {
             byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
-            ByteBuffer byteBuffer = ByteBuffer.allocate(bytes.length);
-            byteBuffer.put(bytes);
-            byteBuffer.flip();
-            socketChannel.write(byteBuffer);
+            ByteBuffer writeBuffer = ByteBuffer.allocate(bytes.length);
+            writeBuffer.put(bytes);
+            writeBuffer.flip();
+            client.write(writeBuffer);  // 向客户端发送消息
         }
     }
 }
