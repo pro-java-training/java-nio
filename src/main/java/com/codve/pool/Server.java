@@ -1,7 +1,5 @@
 package com.codve.pool;
 
-import com.codve.block.Handler;
-
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -17,7 +15,7 @@ public class Server {
                     new ArrayBlockingQueue<>(64));;
             while (true) {
                 Socket client = server.accept();
-                executor.execute(new Handler(client));
+                executor.execute(new com.codve.block.Server(client));
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
