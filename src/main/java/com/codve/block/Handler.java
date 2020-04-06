@@ -1,4 +1,4 @@
-package com.codve;
+package com.codve.block;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -23,14 +23,9 @@ public class Handler extends Thread {
     public void run() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
              PrintWriter writer = new PrintWriter(socket.getOutputStream(), true)) {
-            while (true) {
-                String body = reader.readLine();
-                if (body == null) {
-                    break;
-                }
-                System.out.println("received request: " + body);
-                writer.println(LocalDateTime.now().format(formatter.get()));
-            }
+            String body = reader.readLine();
+            System.out.println("received request: " + body);
+            writer.println(LocalDateTime.now().format(formatter.get()));
         } catch (IOException e) {
             e.printStackTrace();
         }
