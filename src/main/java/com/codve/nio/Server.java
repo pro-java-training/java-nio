@@ -96,8 +96,8 @@ public class Server extends Thread {
                     readBuffer.flip(); // 指针回到 buffer 头部
                     byte[] bytes = new byte[readBuffer.remaining()]; // 获取 buffer 中元素数量
                     readBuffer.get(bytes); // 把 buffer 中的 数据读取到 byte[] 中.
-                    String body = new String(bytes, StandardCharsets.UTF_8);
-                    System.out.println("received request: " + body);
+                    String request = new String(bytes, StandardCharsets.UTF_8);
+                    System.out.println("received request: " + request);
                     String response = LocalDateTime.now().format(formatter.get());
                     doWrite(client, response);
                 } else if (length < 0) { // 链路关闭

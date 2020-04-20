@@ -1,5 +1,6 @@
 package com.codve.aio;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
@@ -7,12 +8,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-public class ReadCompletionHandler implements CompletionHandler<Integer, ByteBuffer> {
+public class ReadHandler implements CompletionHandler<Integer, ByteBuffer> {
 
     private AsynchronousSocketChannel channel;
 
-    public ReadCompletionHandler(AsynchronousSocketChannel channel) {
-            this.channel = channel;
+    public ReadHandler(AsynchronousSocketChannel channel) {
+        this.channel = channel;
     }
 
     @Override
@@ -29,7 +30,11 @@ public class ReadCompletionHandler implements CompletionHandler<Integer, ByteBuf
 
     @Override
     public void failed(Throwable exc, ByteBuffer attachment) {
-
+        try {
+            channel.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void doWrite(String msg) {
@@ -42,15 +47,21 @@ public class ReadCompletionHandler implements CompletionHandler<Integer, ByteBuf
         writeBuffer.flip();
         channel.write(writeBuffer, writeBuffer, new CompletionHandler<Integer, ByteBuffer>() {
             @Override
-            public void completed(Integer result, ByteBuffer attachment) {
+            public void completed(Integer result, ByteBuffer buffer) {
                 // 如果没有发送完成, 继续发送
-
+                if (buffer.hasRemaining()) {
+                    channel.write(buffer, buffer, this);
+                }
             }
 
             @Override
             public void failed(Throwable exc, ByteBuffer attachment) {
-
+                try {
+                    channel.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        })
+        });
     }
 }

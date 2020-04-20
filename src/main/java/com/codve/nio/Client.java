@@ -81,7 +81,7 @@ public class Client extends Thread {
         if (client.connect(new InetSocketAddress(host, port))) {
             // 连接成功 注册读事件
             client.register(selector, SelectionKey.OP_READ);
-            doWrite(client);
+            doWrite(client, "what's the time?");
         } else {
             // 向 Selector 注册连接事件, 监听服务端的 ACK 应答
             client.register(selector, SelectionKey.OP_CONNECT);
@@ -94,7 +94,7 @@ public class Client extends Thread {
             if (key.isConnectable()) { // 处理连接事件
                 if (socketChannel.finishConnect()) { // 连接成功
                     socketChannel.register(selector, SelectionKey.OP_READ); // 继续注册读事件
-                    doWrite(socketChannel); // 发送消息
+                    doWrite(socketChannel, "what's the time?"); // 发送消息
                 } else {
                     System.exit(1); // 连接失败, 退出
                 }
@@ -117,8 +117,8 @@ public class Client extends Thread {
         }
     }
 
-    private void doWrite(SocketChannel socketChannel) throws IOException {
-        byte[] response = "what's the time?".getBytes(StandardCharsets.UTF_8);
+    private void doWrite(SocketChannel socketChannel, String msg) throws IOException {
+        byte[] response = msg.getBytes(StandardCharsets.UTF_8);
         ByteBuffer byteBuffer = ByteBuffer.allocate(response.length);
         byteBuffer.put(response);
         byteBuffer.flip();
