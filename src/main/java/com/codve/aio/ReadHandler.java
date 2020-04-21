@@ -12,6 +12,10 @@ public class ReadHandler implements CompletionHandler<Integer, ByteBuffer> {
 
     private AsynchronousSocketChannel channel;
 
+    private ThreadLocal<DateTimeFormatter> formatter = ThreadLocal.withInitial(
+            () -> DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    );
+
     public ReadHandler(AsynchronousSocketChannel channel) {
         this.channel = channel;
     }
@@ -23,8 +27,7 @@ public class ReadHandler implements CompletionHandler<Integer, ByteBuffer> {
         attachment.get(body);
         String request = new String(body, StandardCharsets.UTF_8);
         System.out.println("received request: " + request);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        String msg = LocalDateTime.now().format(formatter);
+        String msg = LocalDateTime.now().format(formatter.get());
         doWrite(msg);
     }
 
@@ -38,17 +41,17 @@ public class ReadHandler implements CompletionHandler<Integer, ByteBuffer> {
     }
 
     private void doWrite(String msg) {
-        if (msg == null || msg.trim().length() == 0) {
-            return;
-        }
         byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
         ByteBuffer writeBuffer = ByteBuffer.allocate(bytes.length);
         writeBuffer.put(bytes);
         writeBuffer.flip();
+        // 第一个参数表示输出缓冲区
+        // 第二个参数表示异步 Channel 携带的附件, 作为回调的参数
+        // 第三个参数表示回调 Handler, 第二个参数作为回调 Handler 方法的入参
         channel.write(writeBuffer, writeBuffer, new CompletionHandler<Integer, ByteBuffer>() {
             @Override
             public void completed(Integer result, ByteBuffer buffer) {
-                // 如果没有发送完成, 继续发送
+                // 如果没有发送完成, 继续发送, 这里有递归调用
                 if (buffer.hasRemaining()) {
                     channel.write(buffer, buffer, this);
                 }

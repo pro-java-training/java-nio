@@ -8,13 +8,15 @@ import java.nio.channels.CompletionHandler;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 
-public class ClientHandler implements CompletionHandler<Void, ClientHandler>, Runnable {
+public class Client extends Thread implements CompletionHandler<Void, Client> {
 
     private AsynchronousSocketChannel client;
+    private String host;
     private int port;
     private CountDownLatch latch;
 
-    public ClientHandler(int port) {
+    public Client(String host, int port) {
+        this.host = host;
         this.port = port;
         try {
             client = AsynchronousSocketChannel.open();
@@ -26,7 +28,9 @@ public class ClientHandler implements CompletionHandler<Void, ClientHandler>, Ru
     @Override
     public void run() {
         latch = new CountDownLatch(1);
-        client.connect(new InetSocketAddress(port), this, this);
+        // 第二个参数是连接成功后返回的参数
+        // 第三个参数是连接成功后的回调
+        client.connect(new InetSocketAddress(host, port), this, this);
         try {
             latch.await();
             client.close();
@@ -36,7 +40,7 @@ public class ClientHandler implements CompletionHandler<Void, ClientHandler>, Ru
     }
 
     @Override
-    public void completed(Void result, ClientHandler attachment) {
+    public void completed(Void result, Client attachment) {
         byte[] request = "what's the time?".getBytes(StandardCharsets.UTF_8);
         ByteBuffer writeBuffer = ByteBuffer.allocate(request.length);
         writeBuffer.put(request);
@@ -86,12 +90,16 @@ public class ClientHandler implements CompletionHandler<Void, ClientHandler>, Ru
     }
 
     @Override
-    public void failed(Throwable exc, ClientHandler attachment) {
+    public void failed(Throwable exc, Client attachment) {
         try {
             client.close();
             latch.countDown();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static void main(String[] args) {
+        new Client("127.0.0.1", 8888).start();
     }
 }
